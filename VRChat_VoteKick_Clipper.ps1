@@ -1,16 +1,19 @@
+# Based on VRC_World_Location by Elocin-Anagram
+# https://github.com/Elocin-Anagram/VRC_World_Location
+
 $logDirectory         = Join-Path $env:USERPROFILE "AppData\LocalLow\VRChat\VRChat"
 
 # Counts lines from [ModerationManager], plus "Remove notification from AllTime notifications" lines.
 # Does not count "Remove notification from Local notifications" lines.
 $triggerPattern       = '(\[ModerationManager\].*(A vote kick has been initiated against|A vote to kick .+ has been requested))|(Remove notification from AllTime notifications:.*A vote kick has been initiated against)'
 $clipDelaySeconds     = 0     # Press the clip key after waiting this long (to capture the consequences)
-$clipCooldownSeconds  = 2    # Don’t consider more voting kicks from now on after this video
+$clipCooldownSeconds  = 2    # Ignore further vote kicks for this long after a clip (also absorbs double log lines)
 $pollIntervalSeconds  = 1     # The frequency of the log inspection
 
-#Key to press for saving the clip. Should correspond to your OBS “Save Replay” shortcut.
+#Key to press for saving the clip. Should correspond to your OBS "Save Replay" hotkey.
 #Keys allowed: F1-F24, A-Z, 0-9, Numpad0-Numpad9, Home, End, Insert, Delete,
 #             PageUp, PageDown, Pause, ScrollLock, Space
-#Modifiers (optional): “Ctrl”, “Alt”, “Shift”    Example: @("Ctrl","Shift")
+#Modifiers (optional): "Ctrl", "Alt", "Shift"    Example: @("Ctrl","Shift")
 $clipKey              = "PageDown"
 $clipModifiers        = @()
 
@@ -124,7 +127,7 @@ $clipLabel = (@($clipModifiers) + $clipKey) -join "+"
 function Send-Hotkey
 {
 
-    # Modifiers reduced, and then comes the
+    # Modifiers down first, then the key
     foreach ($vk in $modifierVks)
     {
         [KeySender]::keybd_event([byte]$vk, 0, 0, [UIntPtr]::Zero)
@@ -134,7 +137,7 @@ function Send-Hotkey
     Start-Sleep -Milliseconds 50
     [KeySender]::keybd_event([byte]$clipVk, 0, 2, [UIntPtr]::Zero)   # key up
 
-    # Modifiers down (reverse order)
+    # Modifiers up (reverse order)
     for ($i = $modifierVks.Count - 1; $i -ge 0; $i--)
     {
         [KeySender]::keybd_event([byte]$modifierVks[$i], 0, 2, [UIntPtr]::Zero)

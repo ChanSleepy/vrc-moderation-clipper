@@ -1,3 +1,6 @@
+# Based on VRC_World_Location by Elocin-Anagram
+# https://github.com/Elocin-Anagram/VRC_World_Location
+
 $logDirectory         = Join-Path $env:USERPROFILE "AppData\LocalLow\VRChat\VRChat"
 
 # Events that press the clip key. Set Enabled = $false to disable an event.
@@ -162,7 +165,7 @@ Write-Host "Clip key      : $clipLabel" -ForegroundColor Cyan
 Write-Host "Clip delay    : $clipDelaySeconds s | Cooldown: $clipCooldownSeconds s" -ForegroundColor Cyan
 Write-Host "Active events : $((($triggers | Where-Object { $_.Enabled } | ForEach-Object { $_.Name }) -join ', '))" -ForegroundColor Cyan
 Write-Host "---------------------------------------------------" -ForegroundColor DarkGray
-Write-Host "Watching for kicks, warns, bans, blocks and mutes. Make sure the OBS Replay Buffer is running." -ForegroundColor Green
+Write-Host "Watching for the active events listed above. Make sure the OBS Replay Buffer is running." -ForegroundColor Green
 Write-Host ""
 
 $currentLog = $null

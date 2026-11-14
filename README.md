@@ -136,6 +136,8 @@ The replay buffer saves the last N seconds before the key press. To capture the 
 
 ## Acknowledgements
 
-The `.bat` launcher files are adapted from
+This project is based on
 [VRC_World_Location](https://github.com/Elocin-Anagram/VRC_World_Location)
-by Elocin-Anagram. Thanks for the original work.
+by Elocin-Anagram. The `.bat` launchers and the log-watching and hotkey
+scripts started from that project and were then modified for moderation events.
+Thanks for the original work.
