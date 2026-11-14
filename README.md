@@ -1,6 +1,6 @@
 # VRChat Moderation Clipper
 
-Automatically saves an OBS replay clip when VRChat logs a kick, a warning, or a vote kick.
+Automatically saves an OBS replay clip when VRChat logs a kick, warning, ban, or vote kick.
 
 The scripts read VRChat's log file and press your OBS "Save Replay" hotkey when a moderation event appears. Nothing is injected into VRChat and no client mods are needed.
 
@@ -10,10 +10,10 @@ The scripts read VRChat's log file and press your OBS "Save Replay" hotkey when 
 
 | File | Purpose |
 |---|---|
-| `Start Moderation.bat` | Launches `VRChat_Moderation_Clipper.ps1` (kicks and warnings) |
-| `Start votkick Detected.bat` | Launches `VRChat_VoteKick_Clipper.ps1` (vote kicks) |
-| `VRChat_Moderation_Clipper.ps1` | Watches for `[ModerationManager]` kick and warn lines |
-| `VRChat_VoteKick_Clipper.ps1` | Watches for vote kick initiated/requested lines |
+| `Start Moderation.bat` | Launches `VRChat_Moderation_Clipper.ps1` (kicks, warnings, bans, and optionally blocks and mutes) |
+| `Start votkick DETECTED.bat` | Launches `VRChat_VoteKick_Clipper.ps1` (vote kicks) |
+| `VRChat_Moderation_Clipper.ps1` | Watches the log for moderation events |
+| `VRChat_VoteKick_Clipper.ps1` | Watches the log for vote kick events |
 
 You can run either script on its own, or both at the same time.
 
@@ -31,6 +31,49 @@ You can run either script on its own, or both at the same time.
 4. Click **Start Replay Buffer** in OBS.
 5. Launch VRChat, then double-click the `.bat` file for the script you want.
 
+## Events detected
+
+### Moderation script
+
+Each event has an `Enabled` flag at the top of `VRChat_Moderation_Clipper.ps1`. Set it to `$false` to ignore that event.
+
+| Event | Source in log | Enabled by default |
+|---|---|---|
+| Player kicked | `[ModerationManager]` message | Yes |
+| Player warned | `[ModerationManager]` message | Yes |
+| Player blocked | `[ModerationManager]` request | No |
+| Player muted | `[ModerationManager]` message | No |
+| Moderation: warn | `[API]` moderation request | Yes |
+| Moderation: kick | `[API]` moderation request | Yes |
+| Moderation: ban | `[API]` moderation request | Yes |
+| Moderation: block | `[API]` player moderation request | No |
+| Moderation: mute | `[API]` player moderation request | No |
+
+The `[ModerationManager]` entries catch what happens in the instance. The `[API]` entries catch the moderation request VRChat sends to its servers. A single kick can produce both, so the cooldown (see below) makes sure you only get one clip.
+
+Only lines that begin with `[ModerationManager]` or `[API]` count. "Remove notification" lines that merely repeat a moderation message are ignored.
+
+Example:
+
+```powershell
+$triggers = @(
+    @{ Name = "Player kicked";  Enabled = $true;  Pattern = '\[ModerationManager\] .+ has been kicked' }
+    @{ Name = "Player muted";   Enabled = $true;  Pattern = '\[ModerationManager\] .+ is now Muted' }
+    # ...
+)
+```
+
+When the script starts, it prints the list of active events so you can confirm what it's watching.
+
+### Vote kick script
+
+`VRChat_VoteKick_Clipper.ps1` triggers on a single pattern that matches:
+
+- `[ModerationManager]` lines saying a vote kick was initiated against someone or a vote to kick was requested
+- "Remove notification from AllTime notifications" lines containing the vote kick message
+
+"Remove notification from Local notifications" lines are ignored. The pattern is in `$triggerPattern` if you need to adjust it.
+
 ## Configuration
 
 Settings are at the top of each `.ps1` file. Open it in any text editor.
@@ -38,7 +81,7 @@ Settings are at the top of each `.ps1` file. Open it in any text editor.
 | Setting | Default | What it does |
 |---|---|---|
 | `$clipDelaySeconds` | `0` | Seconds to wait after detecting an event before pressing the clip key. `0` saves immediately, so the clip shows what led up to the event. Raise it to also capture what happens afterwards. |
-| `$clipCooldownSeconds` | `2` | After a clip is saved, further events within this many seconds are ignored. This prevents duplicate clips when several log lines appear at once. |
+| `$clipCooldownSeconds` | `5` (moderation), `2` (vote kick) | After a clip is saved, further events within this many seconds are ignored. This prevents duplicate clips from retries and double log lines. |
 | `$pollIntervalSeconds` | `1` | How often the log file is checked for new lines. 1 second is fine for most setups. |
 | `$clipKey` | `"PageDown"` | The key pressed to save the replay. Must match your OBS "Save Replay" hotkey. |
 | `$clipModifiers` | `@()` | Optional modifier keys held while pressing the clip key. |
@@ -69,30 +112,19 @@ The replay buffer saves the last N seconds before the key press. To capture the 
 - Set `$clipDelaySeconds` to a few seconds, for example `5`.
 - Make sure your OBS replay buffer length is longer than the delay plus the amount of lead-up you want.
 
-### Turning events on or off (moderation script)
-
-In `VRChat_Moderation_Clipper.ps1`, each event has an `Enabled` flag:
-
-```powershell
-$triggers = @(
-    @{ Name = "Player kicked"; Enabled = $true;  Pattern = '\[ModerationManager\] .+ has been kicked' }
-    @{ Name = "Player warned"; Enabled = $false; Pattern = '\[ModerationManager\] .+ has been warned' }
-)
-```
-
-Set `Enabled = $false` to ignore that event.
-
 ## How it works
 
 1. Finds the newest `output_log_*.txt` in `%USERPROFILE%\AppData\LocalLow\VRChat\VRChat`.
 2. Starts reading from the end of the file, so old events are ignored. If VRChat restarts and creates a new log, it reads that one from the start.
-3. Matches new lines against the trigger pattern. Only lines beginning with `[ModerationManager]` count; "Remove notification" lines are ignored.
+3. Matches new lines against the enabled trigger patterns.
 4. If the cooldown has passed, waits `$clipDelaySeconds` and sends the hotkey.
 
 ## Troubleshooting
 
 - **"VRChat log file not found"**: VRChat isn't running, or hasn't created a log yet.
 - **Nothing gets saved**: Check that the OBS Replay Buffer is started (not just enabled) and the OBS hotkey matches `$clipKey` exactly.
+- **A moderation event wasn't clipped**: Check that its `Enabled` flag is `$true`, and look at the "Active events" line printed at startup. Block and mute events are off by default.
+- **Too many clips, or clips cut off by the cooldown**: Adjust `$clipCooldownSeconds`. A higher value merges nearby events into one clip; a lower value lets closely spaced events each save a clip.
 - **Execution policy prompt**: The script checks that the machine execution policy is `RemoteSigned`. If it isn't, run PowerShell as Administrator once and answer `Y` when asked, or set it yourself with `Set-ExecutionPolicy RemoteSigned -Scope LocalMachine`.
 - **Hotkey doesn't work in OBS**: If OBS runs as Administrator but the script doesn't, Windows may block the keypress. Run both at the same privilege level.
 
@@ -100,3 +132,4 @@ Set `Enabled = $false` to ignore that event.
 
 - Only reads VRChat's log files. It does not modify the game.
 - Clips are saved by OBS to its normal recording folder.
+- Log message formats can change when VRChat updates. If a trigger stops working, check a recent log file and update the matching pattern.
