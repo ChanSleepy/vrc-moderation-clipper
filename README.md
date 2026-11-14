@@ -11,7 +11,7 @@ The scripts read VRChat's log file and press your OBS "Save Replay" hotkey when 
 | File | Purpose |
 |---|---|
 | `Start Moderation.bat` | Launches `VRChat_Moderation_Clipper.ps1` (kicks, warnings, bans, and optionally blocks and mutes) |
-| `Start votkick DETECTED.bat` | Launches `VRChat_VoteKick_Clipper.ps1` (vote kicks) |
+| `Start votkick Detected.bat` | Launches `VRChat_VoteKick_Clipper.ps1` (vote kicks) |
 | `VRChat_Moderation_Clipper.ps1` | Watches the log for moderation events |
 | `VRChat_VoteKick_Clipper.ps1` | Watches the log for vote kick events |
 
