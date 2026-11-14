@@ -1,7 +1,8 @@
 $logDirectory         = Join-Path $env:USERPROFILE "AppData\LocalLow\VRChat\VRChat"
 
-# All lines from here onwards only count for [ModerationManager]. Do not count lines from "Remove notification ...".
-$triggerPattern       = '\[ModerationManager\].*(A vote kick has been initiated against|A vote to kick .+ has been requested)'
+# Counts lines from [ModerationManager], plus "Remove notification from AllTime notifications" lines.
+# Does not count "Remove notification from Local notifications" lines.
+$triggerPattern       = '(\[ModerationManager\].*(A vote kick has been initiated against|A vote to kick .+ has been requested))|(Remove notification from AllTime notifications:.*A vote kick has been initiated against)'
 $clipDelaySeconds     = 0     # Press the clip key after waiting this long (to capture the consequences)
 $clipCooldownSeconds  = 2    # Don’t consider more voting kicks from now on after this video
 $pollIntervalSeconds  = 1     # The frequency of the log inspection

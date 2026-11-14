@@ -1,17 +1,26 @@
 $logDirectory         = Join-Path $env:USERPROFILE "AppData\LocalLow\VRChat\VRChat"
 
-# Pressing the Clip Key Events. Setting Enabled = $false will disable an event.
-# Only the line that begins with [ModerationManager] counts. Ignore the "Remove notification ..."
-# lines which contain moderation message within a notification.
+# Events that press the clip key. Set Enabled = $false to disable an event.
+# [ModerationManager] lines: only lines that begin with [ModerationManager] count.
+#   Ignore the "Remove notification ..." lines which contain the moderation message within a notification.
+# [API] lines: the moderation request VRChat sends (type warn / kick / ban on user/usr_.../moderations,
+#   type block / mute on auth/user/playermoderations).
 $triggers = @(
-    @{ Name = "Player kicked"; Enabled = $true; Pattern = '\[ModerationManager\] .+ has been kicked' }
-    @{ Name = "Player warned"; Enabled = $true; Pattern = '\[ModerationManager\] .+ has been warned' }
+    @{ Name = "Player kicked";      Enabled = $true; Pattern = '\[ModerationManager\] .+ has been kicked' }
+    @{ Name = "Player warned";      Enabled = $true; Pattern = '\[ModerationManager\] .+ has been warned' }
+    @{ Name = "Player blocked";     Enabled = $false; Pattern = '\[ModerationManager\] Requesting block on ' }
+    @{ Name = "Player muted";       Enabled = $false; Pattern = '\[ModerationManager\] .+ is now Muted' }
+    @{ Name = "Moderation: warn";   Enabled = $true; Pattern = '\[API\] Requesting Post user/usr_[0-9a-f-]+/moderations \{\{"type":"warn"' }
+    @{ Name = "Moderation: kick";   Enabled = $true; Pattern = '\[API\] Requesting Post user/usr_[0-9a-f-]+/moderations \{\{"type":"kick"' }
+    @{ Name = "Moderation: ban";    Enabled = $true; Pattern = '\[API\] Requesting Post user/usr_[0-9a-f-]+/moderations \{\{"type":"ban"' }
+    @{ Name = "Moderation: block";  Enabled = $false; Pattern = '\[API\] Requesting Post auth/user/playermoderations \{\{"type":"block"' }
+    @{ Name = "Moderation: mute";   Enabled = $false; Pattern = '\[API\] Requesting Post auth/user/playermoderations \{\{"type":"mute"' }
 )
-$clipDelaySeconds     = 0     # Wait for that amount of time before pressing the clip button (for the consequences).
-$clipCooldownSeconds  = 2    # Do not consider any more events beyond this point from a clip
-$pollIntervalSeconds  = 1     #How frequently should one inspect the log?
+$clipDelaySeconds     = 0     # Wait this long before pressing the clip key (to capture the consequences)
+$clipCooldownSeconds  = 5     # Ignore further events for this long after a clip (also absorbs retries / double log lines)
+$pollIntervalSeconds  = 1     # How often the log is checked
 
-# Key for saving the clip. Must be the same key used in OBS as “Save Replay” hotkey.
+# Key for saving the clip. Must be the same key used in OBS as the "Save Replay" hotkey.
 # Available keys: F1-F24, A-Z, 0-9, Numpad0-Numpad9, Home, End, Insert, Delete,
 #               PageUp, PageDown, Pause, ScrollLock, Space
 # Modifiers: "Ctrl", "Alt", "Shift"  e.g. @("Ctrl","Shift")
@@ -48,7 +57,9 @@ if ($currentPolicy -ne 'RemoteSigned')
     Write-Host "Execution Policy set successfully." -ForegroundColor Green
 }
 
-Add-Type @"
+if (-not ('KeySender' -as [type]))
+{
+    Add-Type @"
 using System;
 using System.Runtime.InteropServices;
 public class KeySender {
@@ -56,6 +67,7 @@ public class KeySender {
     public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 }
 "@
+}
 
 function Get-VirtualKey
 {
@@ -125,7 +137,7 @@ $clipLabel = (@($clipModifiers) + $clipKey) -join "+"
 function Send-Hotkey
 {
 
-    # First remove the modifiers, and then
+    # Modifiers down first, then the key
     foreach ($vk in $modifierVks)
     {
         [KeySender]::keybd_event([byte]$vk, 0, 0, [UIntPtr]::Zero)
@@ -135,7 +147,7 @@ function Send-Hotkey
     Start-Sleep -Milliseconds 50
     [KeySender]::keybd_event([byte]$clipVk, 0, 2, [UIntPtr]::Zero)   # key up
 
-    # Modifiers down (reverse order)
+    # Modifiers up (reverse order)
     for ($i = $modifierVks.Count - 1; $i -ge 0; $i--)
     {
         [KeySender]::keybd_event([byte]$modifierVks[$i], 0, 2, [UIntPtr]::Zero)
@@ -148,8 +160,9 @@ Write-Host "---------------------------------------------------" -ForegroundColo
 Write-Host "Log directory : $logDirectory" -ForegroundColor Cyan
 Write-Host "Clip key      : $clipLabel" -ForegroundColor Cyan
 Write-Host "Clip delay    : $clipDelaySeconds s | Cooldown: $clipCooldownSeconds s" -ForegroundColor Cyan
+Write-Host "Active events : $((($triggers | Where-Object { $_.Enabled } | ForEach-Object { $_.Name }) -join ', '))" -ForegroundColor Cyan
 Write-Host "---------------------------------------------------" -ForegroundColor DarkGray
-Write-Host "Kicking and warning on the lookout. Ensure that the OBS Replay Buffer is enabled." -ForegroundColor Green
+Write-Host "Watching for kicks, warns, bans, blocks and mutes. Make sure the OBS Replay Buffer is running." -ForegroundColor Green
 Write-Host ""
 
 $currentLog = $null
