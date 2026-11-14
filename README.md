@@ -1,4 +1,4 @@
-# VRChat Mod Clipper
+# VRChat Moderation Clipper
 
 Automatically saves an OBS replay clip when VRChat logs a kick, a warning, or a vote kick.
 
