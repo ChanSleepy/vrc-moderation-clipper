@@ -133,3 +133,9 @@ The replay buffer saves the last N seconds before the key press. To capture the 
 - Only reads VRChat's log files. It does not modify the game.
 - Clips are saved by OBS to its normal recording folder.
 - Log message formats can change when VRChat updates. If a trigger stops working, check a recent log file and update the matching pattern.
+
+## Acknowledgements
+
+The `.bat` launcher files are adapted from
+[VRC_World_Location](https://github.com/Elocin-Anagram/VRC_World_Location)
+by Elocin-Anagram. Thanks for the original work.

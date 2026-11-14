@@ -1,7 +1,11 @@
 @echo off
-REM This batch file runs a PowerShell script without administrative privileges.
+REM Launches the VRChat Vote Kick Clipper (vote kick detection).
+REM Adapted from the launcher in https://github.com/Elocin-Anagram/VRC_World_Location
+REM
+REM %~dp0 is the folder this .bat file is in, so the script is found even if
+REM the .bat is started from a shortcut or "Run as administrator".
+REM -NoExit keeps the window open so any error message stays visible.
 
-REM The script "VRChat_VoteKick_Clipper.ps1" is called using its file name because it's in the same folder.
-PowerShell -NoExit -ExecutionPolicy Bypass -File "VRChat_VoteKick_Clipper.ps1"
+PowerShell -NoExit -ExecutionPolicy Bypass -File "%~dp0VRChat_VoteKick_Clipper.ps1"
 
 pause
